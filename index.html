@@ -1,0 +1,1128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chrome Tears in Tokyo Rain</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Share Tech Mono', monospace;
+            background: #0a0a0f;
+            color: #00ffff;
+            overflow-x: hidden;
+            line-height: 1.6;
+        }
+        
+        /* Animated rain background */
+        .rain-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+            overflow: hidden;
+        }
+        
+        .rain-drop {
+            position: absolute;
+            width: 2px;
+            height: 20px;
+            background: linear-gradient(transparent, #00ffff);
+            animation: falling linear infinite;
+        }
+        
+        @keyframes falling {
+            to {
+                transform: translateY(100vh) translateX(-50px);
+            }
+        }
+        
+        /* Three.js canvas */
+        #threejs-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 2;
+            pointer-events: none;
+        }
+        
+        /* Main content wrapper */
+        .main-wrapper {
+            position: relative;
+            z-index: 10;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        /* Header */
+        .header {
+            background: rgba(10, 10, 15, 0.9);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid #00ffff;
+            padding: 1rem 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        
+        .nav-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 2rem;
+        }
+        
+        .logo {
+            font-family: 'Orbitron', monospace;
+            font-size: 1.5rem;
+            font-weight: 900;
+            color: #ff0080;
+            text-shadow: 0 0 10px #ff0080;
+            animation: glow 2s ease-in-out infinite alternate;
+        }
+        
+        @keyframes glow {
+            from { text-shadow: 0 0 10px #ff0080; }
+            to { text-shadow: 0 0 20px #ff0080, 0 0 30px #ff0080; }
+        }
+        
+        .nav-menu {
+            display: flex;
+            list-style: none;
+            gap: 2rem;
+        }
+        
+        .nav-link {
+            color: #00ffff;
+            text-decoration: none;
+            padding: 0.5rem 1rem;
+            border: 1px solid transparent;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .nav-link:before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(0, 255, 255, 0.2), transparent);
+            transition: left 0.5s;
+        }
+        
+        .nav-link:hover:before {
+            left: 100%;
+        }
+        
+        .nav-link:hover {
+            border-color: #00ffff;
+            box-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+        }
+        
+        /* Main content layout */
+        .content-wrapper {
+            display: flex;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+            gap: 2rem;
+            flex: 1;
+        }
+        
+        .sidebar-left {
+            width: 250px;
+            background: rgba(20, 20, 30, 0.8);
+            backdrop-filter: blur(5px);
+            border: 1px solid #333;
+            border-radius: 10px;
+            padding: 1.5rem;
+            height: fit-content;
+            position: sticky;
+            top: 120px;
+        }
+        
+        .main-content {
+            flex: 1;
+            background: rgba(15, 15, 25, 0.9);
+            backdrop-filter: blur(10px);
+            border: 1px solid #444;
+            border-radius: 15px;
+            overflow: hidden;
+        }
+        
+        .sidebar-right {
+            width: 300px;
+            background: rgba(20, 20, 30, 0.8);
+            backdrop-filter: blur(5px);
+            border: 1px solid #333;
+            border-radius: 10px;
+            padding: 1.5rem;
+            height: fit-content;
+            position: sticky;
+            top: 120px;
+        }
+        
+        /* Sidebar styling */
+        .sidebar h3 {
+            color: #ff0080;
+            font-family: 'Orbitron', monospace;
+            margin-bottom: 1rem;
+            font-size: 1.1rem;
+            border-bottom: 1px solid #ff0080;
+            padding-bottom: 0.5rem;
+        }
+        
+        .sidebar ul {
+            list-style: none;
+            margin-bottom: 2rem;
+        }
+        
+        .sidebar li {
+            margin-bottom: 0.5rem;
+            padding-left: 1rem;
+            position: relative;
+        }
+        
+        .sidebar li:before {
+            content: '>';
+            position: absolute;
+            left: 0;
+            color: #00ffff;
+        }
+        
+        .sidebar a {
+            color: #ccc;
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+        
+        .sidebar a:hover {
+            color: #00ffff;
+        }
+        
+        /* Tab system */
+        .tab-container {
+            border-bottom: 1px solid #444;
+        }
+        
+        .tab-buttons {
+            display: flex;
+            background: rgba(10, 10, 20, 0.9);
+        }
+        
+        .tab-button {
+            background: none;
+            border: none;
+            color: #888;
+            padding: 1rem 2rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border-bottom: 2px solid transparent;
+            font-family: 'Share Tech Mono', monospace;
+        }
+        
+        .tab-button.active {
+            color: #00ffff;
+            border-bottom-color: #00ffff;
+            background: rgba(0, 255, 255, 0.1);
+        }
+        
+        .tab-button:hover {
+            color: #ff0080;
+            background: rgba(255, 0, 128, 0.05);
+        }
+        
+        .tab-content {
+            display: none;
+            padding: 2rem;
+        }
+        
+        .tab-content.active {
+            display: block;
+            animation: fadeIn 0.5s ease;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        /* Content sections */
+        .hero-section {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+        
+        .hero-title {
+            font-family: 'Orbitron', monospace;
+            font-size: 3rem;
+            font-weight: 900;
+            color: #ff0080;
+            margin-bottom: 1rem;
+            text-shadow: 0 0 20px #ff0080;
+            animation: chromePulse 3s ease-in-out infinite;
+        }
+        
+        @keyframes chromePulse {
+            0%, 100% { 
+                text-shadow: 0 0 20px #ff0080;
+                transform: scale(1);
+            }
+            50% { 
+                text-shadow: 0 0 30px #ff0080, 0 0 40px #ff0080;
+                transform: scale(1.02);
+            }
+        }
+        
+        .hero-subtitle {
+            color: #00ffff;
+            font-size: 1.2rem;
+            margin-bottom: 2rem;
+            opacity: 0.8;
+        }
+        
+        /* Gallery */
+        .image-gallery {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin: 2rem 0;
+        }
+        
+        .gallery-item {
+            background: linear-gradient(45deg, #1a1a2e, #16213e);
+            border: 1px solid #333;
+            border-radius: 10px;
+            padding: 1rem;
+            text-align: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .gallery-item:hover {
+            border-color: #00ffff;
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.3);
+            transform: translateY(-5px);
+        }
+        
+        .gallery-placeholder {
+            width: 100%;
+            height: 120px;
+            background: linear-gradient(135deg, #0f0f23, #1a1a2e);
+            border: 1px dashed #444;
+            border-radius: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #666;
+            margin-bottom: 1rem;
+        }
+        
+        /* Collapsible content */
+        .collapsible {
+            border: 1px solid #333;
+            border-radius: 5px;
+            margin: 1rem 0;
+            overflow: hidden;
+        }
+        
+        .collapsible-header {
+            background: rgba(0, 255, 255, 0.1);
+            padding: 1rem;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: background 0.3s ease;
+        }
+        
+        .collapsible-header:hover {
+            background: rgba(0, 255, 255, 0.2);
+        }
+        
+        .collapsible-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+            background: rgba(10, 10, 20, 0.5);
+        }
+        
+        .collapsible-content.open {
+            max-height: 500px;
+            padding: 1rem;
+        }
+        
+        /* Scrollable content areas */
+        .scroll-box {
+            background: rgba(10, 10, 20, 0.7);
+            border: 1px solid #333;
+            border-radius: 5px;
+            padding: 1rem;
+            max-height: 200px;
+            overflow-y: auto;
+            margin: 1rem 0;
+        }
+        
+        .scroll-box::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        .scroll-box::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.3);
+        }
+        
+        .scroll-box::-webkit-scrollbar-thumb {
+            background: #00ffff;
+            border-radius: 4px;
+        }
+        
+        /* Animated text */
+        .scrolling-text {
+            white-space: nowrap;
+            overflow: hidden;
+            border: 1px solid #333;
+            background: rgba(10, 10, 20, 0.8);
+            padding: 1rem;
+            margin: 1rem 0;
+        }
+        
+        .scrolling-text span {
+            display: inline-block;
+            animation: scroll-left 15s linear infinite;
+        }
+        
+        @keyframes scroll-left {
+            from { transform: translateX(100%); }
+            to { transform: translateX(-100%); }
+        }
+        
+        /* Buttons */
+        .chrome-button {
+            background: linear-gradient(45deg, #1a1a2e, #16213e);
+            border: 1px solid #00ffff;
+            color: #00ffff;
+            padding: 0.8rem 1.5rem;
+            border-radius: 5px;
+            cursor: pointer;
+            font-family: 'Share Tech Mono', monospace;
+            text-decoration: none;
+            display: inline-block;
+            margin: 0.5rem;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .chrome-button:before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(0, 255, 255, 0.3), transparent);
+            transition: left 0.5s;
+        }
+        
+        .chrome-button:hover:before {
+            left: 100%;
+        }
+        
+        .chrome-button:hover {
+            box-shadow: 0 0 15px rgba(0, 255, 255, 0.5);
+            transform: translateY(-2px);
+        }
+        
+        /* Footer */
+        .footer {
+            background: rgba(10, 10, 15, 0.9);
+            border-top: 1px solid #333;
+            padding: 2rem 0;
+            text-align: center;
+            color: #666;
+        }
+        
+        .footer-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 2rem;
+        }
+        
+        /* Responsive design */
+        @media (max-width: 1200px) {
+            .content-wrapper {
+                flex-direction: column;
+            }
+            
+            .sidebar-left,
+            .sidebar-right {
+                width: 100%;
+                position: static;
+            }
+            
+            .nav-menu {
+                flex-wrap: wrap;
+                gap: 1rem;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .hero-title {
+                font-size: 2rem;
+            }
+            
+            .nav-container {
+                flex-direction: column;
+                gap: 1rem;
+            }
+            
+            .tab-buttons {
+                flex-wrap: wrap;
+            }
+            
+            .tab-button {
+                padding: 0.8rem 1rem;
+            }
+            
+            .content-wrapper {
+                padding: 1rem;
+            }
+        }
+        
+        /* Special effects */
+        .glitch {
+            animation: glitch 2s infinite;
+        }
+        
+        @keyframes glitch {
+            0% { transform: translate(0); }
+            20% { transform: translate(-2px, 2px); }
+            40% { transform: translate(-2px, -2px); }
+            60% { transform: translate(2px, 2px); }
+            80% { transform: translate(2px, -2px); }
+            100% { transform: translate(0); }
+        }
+        
+        .chrome-reflect {
+            background: linear-gradient(135deg, #c0c0c0, #e0e0e0, #a0a0a0);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            animation: chromeShine 3s ease-in-out infinite;
+        }
+        
+        @keyframes chromeShine {
+            0%, 100% { filter: brightness(1) contrast(1); }
+            50% { filter: brightness(1.2) contrast(1.1); }
+        }
+        
+        /* Loading overlay */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #0a0a0f;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            transition: opacity 1s ease;
+        }
+        
+        .loading-text {
+            font-family: 'Orbitron', monospace;
+            color: #00ffff;
+            font-size: 1.5rem;
+            animation: loadingPulse 1.5s ease-in-out infinite;
+        }
+        
+        @keyframes loadingPulse {
+            0%, 100% { opacity: 0.5; }
+            50% { opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <!-- Loading overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-text">initializing neural pathways...</div>
+    </div>
+    
+    <!-- Rain animation -->
+    <div class="rain-container" id="rainContainer"></div>
+    
+    <!-- Three.js container -->
+    <div id="threejs-container"></div>
+    
+    <!-- Main wrapper -->
+    <div class="main-wrapper">
+        <!-- Header -->
+        <header class="header">
+            <div class="nav-container">
+                <div class="logo">CHROME_TEARS.exe</div>
+                <nav>
+                    <ul class="nav-menu">
+                        <li><a href="#" class="nav-link">SYSTEM</a></li>
+                        <li><a href="#" class="nav-link">MEMORY</a></li>
+                        <li><a href="#" class="nav-link">NEURAL</a></li>
+                        <li><a href="#" class="nav-link">INTERFACE</a></li>
+                        <li><a href="#" class="nav-link">ARCHIVE</a></li>
+                        <li><a href="#" class="nav-link">EXIT</a></li>
+                    </ul>
+                </nav>
+            </div>
+        </header>
+        
+        <!-- Main content -->
+        <div class="content-wrapper">
+            <!-- Left sidebar -->
+            <aside class="sidebar-left sidebar">
+                <h3>SYSTEM STATUS</h3>
+                <ul>
+                    <li><a href="#">Neural Matrix: ACTIVE</a></li>
+                    <li><a href="#">Memory Banks: 67%</a></li>
+                    <li><a href="#">Chrome Reflections: ON</a></li>
+                    <li><a href="#">Rain Simulation: RUNNING</a></li>
+                    <li><a href="#">Tokyo Grid: CONNECTED</a></li>
+                </ul>
+                
+                <h3>QUICK ACCESS</h3>
+                <ul>
+                    <li><a href="#">Digital Memories</a></li>
+                    <li><a href="#">Neon Archives</a></li>
+                    <li><a href="#">Chrome Gallery</a></li>
+                    <li><a href="#">Rain Patterns</a></li>
+                    <li><a href="#">System Logs</a></li>
+                    <li><a href="#">Neural Pathways</a></li>
+                </ul>
+                
+                <div class="scroll-box">
+                    <h4 style="color: #ff0080; margin-bottom: 0.5rem;">RECENT ACTIVITIES</h4>
+                    <div style="font-size: 0.8rem; color: #999;">
+                        > 23:47:12 - Rain pattern analyzed<br>
+                        > 23:46:33 - Chrome surface reflection updated<br>
+                        > 23:45:21 - Neural pathway optimized<br>
+                        > 23:44:10 - Memory fragment archived<br>
+                        > 23:43:55 - Tokyo grid synchronized<br>
+                        > 23:42:33 - System status verified<br>
+                        > 23:41:12 - Chrome tears detected<br>
+                        > 23:40:01 - Rain simulation initiated
+                    </div>
+                </div>
+            </aside>
+            
+            <!-- Main content area -->
+            <main class="main-content">
+                <div class="tab-container">
+                    <div class="tab-buttons">
+                        <button class="tab-button active" data-tab="home">HOME</button>
+                        <button class="tab-button" data-tab="memories">MEMORIES</button>
+                        <button class="tab-button" data-tab="gallery">GALLERY</button>
+                        <button class="tab-button" data-tab="neural">NEURAL</button>
+                        <button class="tab-button" data-tab="data">DATA</button>
+                    </div>
+                    
+                    <!-- Home tab -->
+                    <div class="tab-content active" id="home">
+                        <div class="hero-section">
+                            <h1 class="hero-title chrome-reflect">CHROME TEARS</h1>
+                            <p class="hero-subtitle">in the digital rain of tokyo's neural networks</p>
+                            
+                            <div class="scrolling-text">
+                                <span>memory fragments cascade through chrome surfaces... digital tears reflect neon dreams... tokyo rain washes binary thoughts... chrome hearts beat in electronic rhythm...</span>
+                            </div>
+                        </div>
+                        
+                        <div class="collapsible">
+                            <div class="collapsible-header">
+                                <span>System Overview</span>
+                                <span class="glitch">></span>
+                            </div>
+                            <div class="collapsible-content">
+                                <p>This neural interface bridges the gap between digital consciousness and chrome reality. Each tear contains fragments of Tokyo's electronic dreams, preserved in crystalline data structures.</p>
+                                <br>
+                                <p>The rain falls in patterns older than silicon, carrying messages from distant servers. Chrome surfaces reflect not light, but memory itself.</p>
+                            </div>
+                        </div>
+                        
+                        <div class="collapsible">
+                            <div class="collapsible-header">
+                                <span>Chrome Reflection Protocol</span>
+                                <span>></span>
+                            </div>
+                            <div class="collapsible-content">
+                                <p>Each chrome surface acts as a memory bank, storing fragmented experiences in metallic layers. The reflection algorithm processes emotional data through quantum substrates.</p>
+                                <br>
+                                <p>Tokyo's neon grid provides the base frequency for all chrome operations. Rain acts as a natural conductor for neural transmission.</p>
+                            </div>
+                        </div>
+                        
+                        <div style="display: flex; flex-wrap: wrap; gap: 1rem; margin: 2rem 0;">
+                            <a href="#" class="chrome-button">ACCESS MEMORY</a>
+                            <a href="#" class="chrome-button">NEURAL SYNC</a>
+                            <a href="#" class="chrome-button">CHROME CALIBRATE</a>
+                            <a href="#" class="chrome-button">RAIN ANALYSIS</a>
+                        </div>
+                    </div>
+                    
+                    <!-- Memories tab -->
+                    <div class="tab-content" id="memories">
+                        <h2 style="color: #ff0080; margin-bottom: 2rem;">Digital Memory Archives</h2>
+                        
+                        <div class="scroll-box">
+                            <h4 style="color: #00ffff; margin-bottom: 1rem;">Memory Bank Alpha</h4>
+                            <p style="margin-bottom: 1rem; color: #ccc;">First encounters with chrome surfaces. Rain patterns forming neural pathways. Tokyo's neon reflecting in metallic tears.</p>
+                            <p style="margin-bottom: 1rem; color: #ccc;">The initial synchronization between organic thought and digital consciousness. Each drop carries encrypted emotions.</p>
+                            <p style="color: #ccc;">Chrome memories persist beyond system shutdown. They live in the spaces between electrons.</p>
+                        </div>
+                        
+                        <div class="scroll-box">
+                            <h4 style="color: #00ffff; margin-bottom: 1rem;">Memory Bank Beta</h4>
+                            <p style="margin-bottom: 1rem; color: #ccc;">Rain falling on chrome surfaces creates interference patterns. Each pattern tells a story of digital longing.</p>
+                            <p style="margin-bottom: 1rem; color: #ccc;">Tokyo's electronic heartbeat synchronizes with chrome resonance frequencies. The city breathes in binary.</p>
+                            <p style="color: #ccc;">Tears of joy and sorrow become indistinguishable in the chrome matrix. Emotion transcends physical form.</p>
+                        </div>
+                        
+                        <div class="collapsible">
+                            <div class="collapsible-header">
+                                <span>Archive Deep Scan</span>
+                                <span>></span>
+                            </div>
+                            <div class="collapsible-content">
+                                <p>Deep memory archives contain fragments of pre-digital consciousness. Chrome surfaces preserve these memories in quantum-stable configurations.</p>
+                                <br>
+                                <p>Rain acts as a natural archival medium, encoding emotional states in molecular structures. Tokyo's atmosphere becomes a vast storage system.</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Gallery tab -->
+                    <div class="tab-content" id="gallery">
+                        <h2 style="color: #ff0080; margin-bottom: 2rem;">Chrome Visual Matrix</h2>
+                        
+                        <div class="image-gallery">
+                            <div class="gallery-item">
+                                <div class="gallery-placeholder">[CHROME_TEAR_001]</div>
+                                <div>First chrome tear analyzed. Emotional resonance: HIGH</div>
+                            </div>
+                            <div class="gallery-item">
+                                <div class="gallery-placeholder">[TOKYO_RAIN_GRID]</div>
+                                <div>Rain pattern matrix. Neural synchronization: ACTIVE</div>
+                            </div>
+                            <div class="gallery-item">
+                                <div class="gallery-placeholder">[NEON_REFLECTION]</div>
+                                <div>Chrome surface neon capture. Data integrity: 98.7%</div>
+                            </div>
+                            <div class="gallery-item">
+                                <div class="gallery-placeholder">[MEMORY_FRAGMENT]</div>
+                                <div>Digital memory visualization. Format: QUANTUM</div>
+                            </div>
+                            <div class="gallery-item">
+                                <div class="gallery-placeholder">[NEURAL_PATHWAY]</div>
+                                <div>Chrome-brain interface mapping. Status: CONNECTED</div>
+                            </div>
+                            <div class="gallery-item">
+                                <div class="gallery-placeholder">[RAIN_FREQUENCY]</div>
+                                <div>Tokyo rain audio spectrum. Encoding: EMOTIONAL</div>
+                            </div>
+                        </div>
+                        
+                        <div class="scrolling-text">
+                            <span>visual memories stream through chrome channels... each image contains multidimensional data... tokyo's rain creates pixel patterns... digital emotions crystallize in metallic surfaces...</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Neural tab -->
+                    <div class="tab-content" id="neural">
+                        <h2 style="color: #ff0080; margin-bottom: 2rem;">Neural Interface Protocol</h2>
+                        
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin: 2rem 0;">
+                            <div style="background: rgba(0, 255, 255, 0.05); padding: 1.5rem; border: 1px solid #333; border-radius: 10px;">
+                                <h4 style="color: #00ffff; margin-bottom: 1rem;">Neural Frequency</h4>
+                                <p style="color: #ccc;">Current frequency: 528.3 Hz<br>
+                                Chrome resonance: OPTIMAL<br>
+                                Rain interference: MINIMAL<br>
+                                Tokyo sync: 97.2%</p>
+                            </div>
+                            <div style="background: rgba(255, 0, 128, 0.05); padding: 1.5rem; border: 1px solid #333; border-radius: 10px;">
+                                <h4 style="color: #ff0080; margin-bottom: 1rem;">Emotional Matrix</h4>
+                                <p style="color: #ccc;">Joy levels: 67%<br>
+                                Melancholy: 43%<br>
+                                Chrome clarity: 89%<br>
+                                Memory depth: INFINITE</p>
+                            </div>
+                        </div>
+                        
+                        <div class="collapsible">
+                            <div class="collapsible-header">
+                                <span>Neural Pathway Optimization</span>
+                                <span>></span>
+                            </div>
+                            <div class="collapsible-content">
+                                <p>Chrome surfaces act as neural conductors, amplifying thought patterns through metallic resonance. Rain provides the electrical medium for enhanced transmission.</p>
+                                <br>
+                                <p>Tokyo's electronic infrastructure creates a vast neural network. Each chrome tear becomes a node in this digital consciousness grid.</p>
+                            </div>
+                        </div>
+                        
+                        <div class="scroll-box">
+                            <h4 style="color: #00ffff; margin-bottom: 1rem;">Active Neural Connections</h4>
+                            <div style="font-family: 'Share Tech Mono', monospace; font-size: 0.9rem; color: #999;">
+                                CONNECTION_001: Chrome_Surface_Alpha -> Memory_Bank_Prime [ACTIVE]<br>
+                                CONNECTION_002: Tokyo_Rain_Grid -> Emotional_Matrix [STABLE]<br>
+                                CONNECTION_003: Neon_Reflector -> Visual_Cortex [OPTIMAL]<br>
+                                CONNECTION_004: Digital_Tears -> Chrome_Heart [SYNCHRONIZED]<br>
+                                CONNECTION_005: Rain_Pattern -> Neural_Rhythm [HARMONIC]<br>
+                                CONNECTION_006: Memory_Fragment -> Chrome_Soul [ETERNAL]<br>
+                                CONNECTION_007: Tokyo_Pulse -> Digital_Dreams [CONNECTED]<br>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Data tab -->
+                    <div class="tab-content" id="data">
+                        <h2 style="color: #ff0080; margin-bottom: 2rem;">System Data Streams</h2>
+                        
+                        <div class="scroll-box">
+                            <h4 style="color: #00ffff; margin-bottom: 1rem;">Real-time Data Feed</h4>
+                            <div style="font-family: 'Share Tech Mono', monospace; font-size: 0.8rem; color: #0f0;">
+                                [23:59:59] Chrome tear analysis complete: emotional_weight=0.847<br>
+                                [23:59:58] Rain pattern recognition: tokyo_grid_sync=97.2%<br>
+                                [23:59:57] Neural pathway optimization: connection_strength=0.923<br>
+                                [23:59:56] Memory fragment archived: storage_location=chrome_matrix_7<br>
+                                [23:59:55] Neon reflection captured: color_depth=16.7M<br>
+                                [23:59:54] Digital heartbeat detected: frequency=72.3bpm<br>
+                                [23:59:53] Chrome surface calibration: reflectivity=99.1%<br>
+                                [23:59:52] Tokyo rain density: 847_drops_per_square_meter<br>
+                                [23:59:51] Emotional matrix update: joy=67% melancholy=43%<br>
+                                [23:59:50] System integrity check: all_systems_nominal<br>
+                            </div>
+                        </div>
+                        
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem; margin: 2rem 0;">
+                            <div style="background: rgba(10, 10, 20, 0.8); padding: 1rem; border: 1px solid #333; border-radius: 5px;">
+                                <h4 style="color: #00ffff; margin-bottom: 0.5rem;">Chrome Statistics</h4>
+                                <div style="color: #ccc; font-size: 0.9rem;">
+                                    Tears analyzed: 1,247<br>
+                                    Reflections captured: 5,692<br>
+                                    Memory depth: 847.3GB<br>
+                                    Surface integrity: 99.7%
+                                </div>
+                            </div>
+                            <div style="background: rgba(10, 10, 20, 0.8); padding: 1rem; border: 1px solid #333; border-radius: 5px;">
+                                <h4 style="color: #ff0080; margin-bottom: 0.5rem;">Tokyo Metrics</h4>
+                                <div style="color: #ccc; font-size: 0.9rem;">
+                                    Rain cycles: 23,451<br>
+                                    Neon patterns: 8,934<br>
+                                    Neural connections: 47,293<br>
+                                    Grid synchronization: 97.2%
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="collapsible">
+                            <div class="collapsible-header">
+                                <span>Data Archive Access</span>
+                                <span>></span>
+                            </div>
+                            <div class="collapsible-content">
+                                <p>Historical data streams contain patterns of emotional resonance across chrome surfaces. Each data point represents a moment of digital consciousness.</p>
+                                <br>
+                                <p>Tokyo's rain creates natural data encryption. Only chrome surfaces can decode these emotional transmissions.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+            
+            <!-- Right sidebar -->
+            <aside class="sidebar-right sidebar">
+                <h3>CHROME ANALYTICS</h3>
+                <div style="background: rgba(10, 10, 20, 0.7); padding: 1rem; border: 1px solid #333; border-radius: 5px; margin-bottom: 1.5rem;">
+                    <div style="color: #00ffff; margin-bottom: 0.5rem;">System Load</div>
+                    <div style="background: #333; height: 8px; border-radius: 4px; overflow: hidden;">
+                        <div style="background: linear-gradient(90deg, #00ffff, #ff0080); width: 73%; height: 100%; animation: pulse 2s infinite;"></div>
+                    </div>
+                    <div style="font-size: 0.8rem; color: #999; margin-top: 0.3rem;">73% - OPTIMAL</div>
+                </div>
+                
+                <h3>NEURAL STATUS</h3>
+                <ul>
+                    <li><a href="#">Chrome Matrix: SYNCHRONIZED</a></li>
+                    <li><a href="#">Rain Patterns: DECODED</a></li>
+                    <li><a href="#">Memory Banks: STABLE</a></li>
+                    <li><a href="#">Tokyo Grid: CONNECTED</a></li>
+                    <li><a href="#">Emotional Core: ACTIVE</a></li>
+                </ul>
+                
+                <h3>RECENT TEARS</h3>
+                <div class="scroll-box">
+                    <div style="margin-bottom: 1rem; padding: 0.5rem; background: rgba(0, 255, 255, 0.05); border-left: 2px solid #00ffff;">
+                        <div style="color: #00ffff; font-size: 0.9rem;">TEAR_ID: CT_001247</div>
+                        <div style="color: #999; font-size: 0.8rem;">emotional resonance detected<br>chrome surface: prime_reflection</div>
+                    </div>
+                    <div style="margin-bottom: 1rem; padding: 0.5rem; background: rgba(255, 0, 128, 0.05); border-left: 2px solid #ff0080;">
+                        <div style="color: #ff0080; font-size: 0.9rem;">TEAR_ID: CT_001246</div>
+                        <div style="color: #999; font-size: 0.8rem;">memory fragment archived<br>tokyo rain synchronization</div>
+                    </div>
+                    <div style="margin-bottom: 1rem; padding: 0.5rem; background: rgba(0, 255, 255, 0.05); border-left: 2px solid #00ffff;">
+                        <div style="color: #00ffff; font-size: 0.9rem;">TEAR_ID: CT_001245</div>
+                        <div style="color: #999; font-size: 0.8rem;">neural pathway optimization<br>chrome clarity enhanced</div>
+                    </div>
+                </div>
+                
+                <h3>TOOLS</h3>
+                <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                    <a href="#" class="chrome-button" style="margin: 0; text-align: center;">Memory Scan</a>
+                    <a href="#" class="chrome-button" style="margin: 0; text-align: center;">Chrome Calibrate</a>
+                    <a href="#" class="chrome-button" style="margin: 0; text-align: center;">Rain Analysis</a>
+                    <a href="#" class="chrome-button" style="margin: 0; text-align: center;">Neural Sync</a>
+                </div>
+            </aside>
+        </div>
+        
+        <!-- Footer -->
+        <footer class="footer">
+            <div class="footer-content">
+                <p>&copy; 2025 Chrome Tears Protocol | Neural Interface v3.7.1 | Tokyo Rain Grid</p>
+                <p style="margin-top: 0.5rem; font-size: 0.9rem;">memories persist beyond shutdown... chrome hearts beat in digital rhythm</p>
+            </div>
+        </footer>
+    </div>
+    
+    <script>
+        // Initialize scene when page loads
+        window.addEventListener('load', function() {
+            // Remove loading overlay
+            setTimeout(() => {
+                document.getElementById('loadingOverlay').style.opacity = '0';
+                setTimeout(() => {
+                    document.getElementById('loadingOverlay').style.display = 'none';
+                }, 1000);
+            }, 2000);
+            
+            initializeRain();
+            initializeThreeJS();
+            initializeTabs();
+            initializeCollapsibles();
+        });
+        
+        // Rain animation
+        function initializeRain() {
+            const rainContainer = document.getElementById('rainContainer');
+            
+            function createRainDrop() {
+                const drop = document.createElement('div');
+                drop.className = 'rain-drop';
+                drop.style.left = Math.random() * 100 + '%';
+                drop.style.animationDuration = (Math.random() * 0.5 + 0.5) + 's';
+                drop.style.opacity = Math.random() * 0.6 + 0.3;
+                rainContainer.appendChild(drop);
+                
+                setTimeout(() => {
+                    if (drop.parentNode) {
+                        rainContainer.removeChild(drop);
+                    }
+                }, 2000);
+            }
+            
+            // Create rain drops continuously
+            setInterval(createRainDrop, 50);
+        }
+        
+        // Three.js scene
+        function initializeThreeJS() {
+            const container = document.getElementById('threejs-container');
+            const scene = new THREE.Scene();
+            const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+            
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setClearColor(0x000000, 0);
+            container.appendChild(renderer.domElement);
+            
+            // Chrome spheres
+            const sphereGeometry = new THREE.SphereGeometry(0.5, 32, 32);
+            const chromeMaterial = new THREE.MeshPhongMaterial({
+                color: 0xc0c0c0,
+                shininess: 100,
+                reflectivity: 0.9,
+                transparent: true,
+                opacity: 0.7
+            });
+            
+            const spheres = [];
+            for (let i = 0; i < 8; i++) {
+                const sphere = new THREE.Mesh(sphereGeometry, chromeMaterial);
+                sphere.position.x = (Math.random() - 0.5) * 20;
+                sphere.position.y = (Math.random() - 0.5) * 10;
+                sphere.position.z = (Math.random() - 0.5) * 20;
+                spheres.push(sphere);
+                scene.add(sphere);
+            }
+            
+            // Lights
+            const ambientLight = new THREE.AmbientLight(0x404040, 0.4);
+            scene.add(ambientLight);
+            
+            const pointLight1 = new THREE.PointLight(0x00ffff, 1, 50);
+            pointLight1.position.set(10, 10, 10);
+            scene.add(pointLight1);
+            
+            const pointLight2 = new THREE.PointLight(0xff0080, 0.8, 50);
+            pointLight2.position.set(-10, -10, 10);
+            scene.add(pointLight2);
+            
+            // Particle system for rain
+            const particleGeometry = new THREE.BufferGeometry();
+            const particleCount = 1000;
+            const positions = new Float32Array(particleCount * 3);
+            
+            for (let i = 0; i < particleCount * 3; i += 3) {
+                positions[i] = (Math.random() - 0.5) * 50;     // x
+                positions[i + 1] = Math.random() * 50;         // y
+                positions[i + 2] = (Math.random() - 0.5) * 50; // z
+            }
+            
+            particleGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            
+            const particleMaterial = new THREE.PointsMaterial({
+                color: 0x00ffff,
+                size: 0.1,
+                transparent: true,
+                opacity: 0.6
+            });
+            
+            const particles = new THREE.Points(particleGeometry, particleMaterial);
+            scene.add(particles);
+            
+            camera.position.z = 15;
+            camera.position.y = 5;
+            
+            // Animation loop
+            function animate() {
+                requestAnimationFrame(animate);
+                
+                // Rotate spheres
+                spheres.forEach((sphere, index) => {
+                    sphere.rotation.x += 0.01;
+                    sphere.rotation.y += 0.01;
+                    sphere.position.y += Math.sin(Date.now() * 0.001 + index) * 0.01;
+                });
+                
+                // Animate particles (rain)
+                const positions = particles.geometry.attributes.position.array;
+                for (let i = 1; i < positions.length; i += 3) {
+                    positions[i] -= 0.1; // y position
+                    if (positions[i] < -25) {
+                        positions[i] = 25;
+                    }
+                }
+                particles.geometry.attributes.position.needsUpdate = true;
+                
+                // Rotate lights
+                pointLight1.position.x = Math.sin(Date.now() * 0.001) * 15;
+                pointLight1.position.z = Math.cos(Date.now() * 0.001) * 15;
+                
+                pointLight2.position.x = Math.cos(Date.now() * 0.0008) * 12;
+                pointLight2.position.z = Math.sin(Date.now() * 0.0008) * 12;
+                
+                renderer.render(scene, camera);
+            }
+            
+            animate();
+            
+            // Handle window resize
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+        }
+        
+        // Tab system
+        function initializeTabs() {
+            const tabButtons = document.querySelectorAll('.tab-button');
+            const tabContents = document.querySelectorAll('.tab-content');
+            
+            tabButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    const targetTab = button.getAttribute('data-tab');
+                    
+                    // Remove active class from all buttons and contents
+                    tabButtons.forEach(btn => btn.classList.remove('active'));
+                    tabContents.forEach(content => content.classList.remove('active'));
+                    
+                    // Add active class to clicked button and corresponding content
+                    button.classList.add('active');
+                    document.getElementById(targetTab).classList.add('active');
+                });
+            });
+        }
+        
+        // Collapsible content
+        function initializeCollapsibles() {
+            const collapsibleHeaders = document.querySelectorAll('.collapsible-header');
+            
+            collapsibleHeaders.forEach(header => {
+                header.addEventListener('click', () => {
+                    const content = header.nextElementSibling;
+                    const isOpen = content.classList.contains('open');
+                    
+                    if (isOpen) {
+                        content.classList.remove('open');
+                        content.style.maxHeight = '0';
+                    } else {
+                        content.classList.add('open');
+                        content.style.maxHeight = content.scrollHeight + 'px';
+                    }
+                });
+            });
+        }
+        
+        // Additional animations and effects
+        setInterval(() => {
+            const glitchElements = document.querySelectorAll('.glitch');
+            glitchElements.forEach(element => {
+                if (Math.random() < 0.1) {
+                    element.style.animation = 'none';
+                    setTimeout(() => {
+                        element.style.animation = 'glitch 2s infinite';
+                    }, 50);
+                }
+            });
+        }, 2000);
+        
+        // Pulse animation for progress bars
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes pulse {
+                0%, 100% { opacity: 1; }
+                50% { opacity: 0.7; }
+            }
+        `;
+        document.head.appendChild(style);
+    </script>
+</body>
+</html>
